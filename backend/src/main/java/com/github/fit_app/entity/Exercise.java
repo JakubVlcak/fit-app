@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 @Table(name = "exercise")
 public class Exercise {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "exercise_id", nullable = false)
     private Long id;
 
@@ -24,6 +25,17 @@ public class Exercise {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "activity_id", nullable = false)
     private Activity activity;
+
+    @Column(name = "death_stop", nullable = false)
+    private Boolean deathStop = false;
+
+    public Boolean getDeathStop() {
+        return deathStop;
+    }
+
+    public void setDeathStop(Boolean deathStop) {
+        this.deathStop = deathStop;
+    }
 
     public Long getId() {
         return id;
@@ -73,4 +85,16 @@ public class Exercise {
         this.activity = activity;
     }
 
+    @Override
+    public String toString() {
+        return "Exercise{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", reps=" + reps +
+                ", weight=" + weight +
+                ", execution='" + execution + '\'' +
+                ", activity=" + activity +
+                ", deathStop=" + deathStop +
+                '}';
+    }
 }

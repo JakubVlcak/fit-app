@@ -3,6 +3,8 @@ package com.github.fit_app.entity;
 import jakarta.persistence.*;
 
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "activity")
@@ -27,6 +29,9 @@ public class Activity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Exercise> exercises;
 
     public Long getId() {
         return id;
@@ -76,4 +81,36 @@ public class Activity {
         this.user = user;
     }
 
+    public List<Exercise> getExercises() {
+        return exercises;
+    }
+
+    public void setExercises(List<Exercise> exercises) {
+        this.exercises = exercises;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Activity activity = (Activity) o;
+        return Objects.equals(id, activity.id) && Objects.equals(name, activity.name) && Objects.equals(date, activity.date) && Objects.equals(duration, activity.duration) && Objects.equals(description, activity.description) && Objects.equals(user, activity.user) && Objects.equals(exercises, activity.exercises);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, date, duration, description, user, exercises);
+    }
+
+    @Override
+    public String toString() {
+        return "Activity{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", date=" + date +
+                ", duration=" + duration +
+                ", description='" + description + '\'' +
+                ", user=" + user +
+                ", exercises=" + exercises +
+                '}';
+    }
 }
