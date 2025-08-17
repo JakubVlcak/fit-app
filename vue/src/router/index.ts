@@ -5,6 +5,7 @@ import RegisterView from '@/views/RegisterView.vue'
 import ActivitiesView from '@/views/ActivitiesView.vue'
 import WorkoutSessionView from '@/views/WorkoutSessionView.vue'
 import ActivitiesListView from '@/views/ActivitiesListView.vue'
+import GoogleSignInView from '@/views/GoogleSignInView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -37,6 +38,11 @@ const router = createRouter({
       path: '/listactivities',
       name: 'listactivities',
       component: ActivitiesListView,
+    },
+    {
+      path: '/',
+      name: 'google-sign-in',
+      component: GoogleSignInView,
     },
   ],
 })
