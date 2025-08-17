@@ -46,6 +46,16 @@
                 </select>
             </div>
 
+            <div>
+                <label class="block mb-1 font-medium">Death Stop</label>
+                <select v-model="deathStop" class="w-full p-2 rounded border border-gray-300 text-black">
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
+
+
+
             <button @click="addActivity" :disabled="!exercise"
                 class="mt-4 px-4 py-2 bg-yellow-500 rounded hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed">
                 Add Set
@@ -58,7 +68,7 @@
                 <li v-for="(a, i) in activities" :key="i"
                     class="bg-gray-100 p-3 rounded flex justify-between items-center">
                     <div>
-                        {{ a.exercise }} - {{ a.reps }} reps - {{ a.weight }}kg ({{ a.execution }})
+                        {{ a.exercise }} - {{ a.reps }} reps - {{ a.weight }}kg ({{ a.execution }}) - Death Stop: {{ a.deathStop === 'yes' ? 'Yes' : 'No' }}
                     </div>
                     <button @click="removeActivity(i)" class="px-2 py-1 bg-red-500 hover:bg-red-600 rounded text-white">
                         ✕
@@ -73,13 +83,14 @@
 import { defineComponent, ref, onMounted, onUnmounted, computed } from 'vue';
 import vSelect from 'vue-select';
 import 'vue-select/dist/vue-select.css';
-import { EXERCISES } from '@/data/exercises';
+import { EXERCISES } from '../data/exercises';
 
 interface Activity {
     exercise: string;
     reps: number;
     weight: number;
     execution: string;
+    deathStop: string;
 }
 
 export default defineComponent({
@@ -94,7 +105,8 @@ export default defineComponent({
         const reps = ref(1);
         const weight = ref(0);
         const execution = ref('bilateral');
-        const activities = ref<Activity[]>([]);
+    const activities = ref<Activity[]>([]);
+    const deathStop = ref('no');
         const searchQuery = ref('');
 
         const customExercises = ref<string[]>([]);
@@ -124,7 +136,8 @@ export default defineComponent({
                 exercise: exercise.value,
                 reps: reps.value,
                 weight: weight.value,
-                execution: execution.value
+                execution: execution.value,
+                deathStop: deathStop.value
             });
         }
 
@@ -153,6 +166,7 @@ export default defineComponent({
             reps,
             weight,
             execution,
+            deathStop,
             activities,
             filteredExercises,
             addActivity,
