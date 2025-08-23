@@ -24,7 +24,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
-
+import { API_URL } from "@/const";
 export default {
   name: 'GoogleSignInDirect',
   setup() {
@@ -32,6 +32,7 @@ export default {
     const isLoading = ref(false)
     const errorMessage = ref('')
     const isGoogleLoaded = ref(false)
+    const apiUrl = (API_URL)
 
     const initializeGoogleSignIn = () => {
       if (window.google && window.google.accounts) {
@@ -62,44 +63,53 @@ export default {
     }
 
     const handleCredentialResponse = async (response) => {
-      console.log('Google credential response:', response)
-      isLoading.value = true
-      errorMessage.value = ''
+  // Store the Google JWT token first
+  localStorage.setItem('authToken', response.credential)
+  console.log('Google credential response:', response)
+  isLoading.value = true
+  errorMessage.value = ''
 
-      try {
-        // Send the JWT token to your backend
-        const backendResponse = await fetch('http://localhost:8080'+'/test', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${response.credential}`
-          },
-        })
+  try {
+    // Send the JWT token to your backend
+    const backendResponse = await fetch(`${apiUrl}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${response.credential}`
+      },
+    })
 
-        if (!backendResponse.ok) {
-          throw new Error('Backend authentication failed')
-        }
-
-        const userData = await backendResponse.json()
-        console.log('Backend response:', userData)
-        
-        // Store user data and token
-        user.value = userData.user
-        if (userData.token) {
-          localStorage.setItem('authToken', userData.token)
-        }
-
-        // Emit authentication success event or handle routing
-        // this.$emit('auth-success', userData)
-        // or this.$router.push('/dashboard')
-
-      } catch (error) {
-        console.error('Authentication failed:', error)
-        errorMessage.value = 'Authentication failed. Please try again.'
-      } finally {
-        isLoading.value = false
-      }
+    if (!backendResponse.ok) {
+      throw new Error('Backend authentication failed')
     }
+
+    const userData = await backendResponse.json()
+    console.log('Backend response:', userData)
+    
+    // FIXED: Store both component state AND localStorage
+    user.value = userData  // Set component state (userData directly, not userData.user)
+    
+    // Store user data in localStorage for other components to access
+    localStorage.setItem('currentUser', JSON.stringify(userData))
+    
+    // If backend provides its own token, store that too
+    if (userData.token) {
+      localStorage.setItem('backendToken', userData.token)
+    }
+
+    console.log('Stored in localStorage - currentUser:', JSON.stringify(userData))
+
+    // Emit authentication success event or handle routing
+    // this.$emit('auth-success', userData)
+    // or this.$router.push('/dashboard')
+
+  } catch (error) {
+    console.error('Authentication failed:', error)
+    errorMessage.value = 'Authentication failed. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
 
     const signOut = async () => {
       try {
