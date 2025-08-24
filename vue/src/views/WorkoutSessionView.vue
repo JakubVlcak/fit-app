@@ -96,7 +96,7 @@
                     </svg>
                 </span>
                 <span v-if="!currentUser">Login Required</span>
-                <span v-else>{{ isSaving ? 'Saving...' : 'Save Activities' }}</span>
+                <span v-else>{{ isSaving ? 'Saving...' : 'Save Workout' }}</span>
             </button>
 
             <!-- Success/Error Messages -->
@@ -106,8 +106,6 @@
             }" class="border px-4 py-3 rounded">
                 {{ saveMessage }}
             </div>
-
-            
         </div>
     </div>
 </template>
@@ -128,27 +126,19 @@ interface Activity {
     deathStop: boolean;
 }
 
-interface ActivityPayload {
+interface ExercisePayload {
     name: string;
-    date: string;
-    duration: string;
-    description?: string;
-    //user_id: number;
-    exercise_id: string;
     reps: number;
     weight: number;
     execution: string;
-    death_stop: boolean;
+    deathStop: boolean;
 }
 
-interface SavedActivity {
-    activity_id: string;
+interface WorkoutPayload {
     name: string;
-    date: string;
     duration: string;
-    exercise_name: string;
-    reps: number;
-    weight: number;
+    description: string;
+    exercises: ExercisePayload[];
 }
 
 interface User {
@@ -181,7 +171,6 @@ export default defineComponent({
         const isSaving = ref(false);
         const saveMessage = ref('');
         const saveStatus = ref<'success' | 'error' | null>(null);
-        const savedActivities = ref<SavedActivity[]>([]);
 
         const customExercises = ref<string[]>([]);
         const workoutName = ref('Workout Session');
@@ -257,20 +246,6 @@ export default defineComponent({
 
         const apiClient = createApiInstance();
 
-        // Helper function to get exercise ID - you'll need to implement this based on your exercise table
-        function getExerciseId(exerciseName: string): string {
-            // This should map exercise names to your exercise table IDs
-            // For now, using a simple hash - replace with actual lookup
-            const exerciseMap: { [key: string]: string } = {
-                // Add your exercise name to ID mappings here
-                // 'Push-up': 'exercise_uuid_1',
-                // 'Squat': 'exercise_uuid_2',
-                // etc.
-            };
-            
-            return exerciseMap[exerciseName] || `exercise_${exerciseName.toLowerCase().replace(/\s+/g, '_')}`;
-        }
-
         const filteredExercises = computed(() => {
             if (!searchQuery.value) return [...EXERCISES, ...customExercises.value];
 
@@ -287,8 +262,6 @@ export default defineComponent({
             
             // Load current user from localStorage
             currentUser.value = getCurrentUser();
-            
-            
         });
 
         onUnmounted(() => {
@@ -323,113 +296,109 @@ export default defineComponent({
             }
         };
 
-        // Save individual activities to backend using axios
+        // Create workout description from activities
+        function createWorkoutDescription(): string {
+            const exerciseSummary = activities.value
+                .map(activity => `${activity.exercise}: ${activity.reps} reps @ ${activity.weight}kg (${activity.execution})${activity.deathStop ? ' - Death Stop' : ''}`)
+                .join(', ');
+            
+            return `Workout completed in ${elapsedTime.value} seconds. Exercises: ${exerciseSummary}`;
+        }
+
+        // Save workout session as single payload with exercises array
         async function saveWorkoutSession() {
-    if (activities.value.length === 0 || !currentUser.value) return;
+            if (activities.value.length === 0 || !currentUser.value) return;
 
-    isSaving.value = true;
-    saveMessage.value = '';
-    saveStatus.value = null;
-
-    try {
-        const sessionDate = new Date().toISOString();
-        const sessionDuration = elapsedTime.value.toString();
-        
-        // Save each activity individually with proper payload structure
-        const savePromises = activities.value.map(async (activity) => {
-            const activityData: ActivityPayload = {
-                name: `${workoutName.value} - ${activity.exercise}`,
-                date: sessionDate,
-                duration: sessionDuration,
-                description: `${activity.reps} reps at ${activity.weight}kg (${activity.execution})${activity.deathStop ? ' - Death Stop' : ''}`,
-                // Remove user_id from payload - backend should get this from Authentication
-                exercise_id: getExerciseId(activity.exercise),
-                reps: activity.reps,
-                weight: activity.weight,
-                execution: activity.execution,
-                death_stop: activity.deathStop
-            };
-
-            // Log the payload for debugging
-            console.log('Sending activity payload:', JSON.stringify(activityData, null, 2));
-
-            const response = await apiClient.post('/activities', activityData);
-            return response.data;
-        });
-
-        // Wait for all activities to be saved
-        const results = await Promise.all(savePromises);
-        
-        saveStatus.value = 'success';
-        saveMessage.value = `Successfully saved ${activities.value.length} activities!`;
-        
-        // Clear current workout
-        activities.value = [];
-        elapsedTime.value = 0;
-        startTime.value = Date.now();
-        workoutName.value = 'Workout Session';
-        
-        // Reload recent activities if the function exists
-        // await loadRecentActivities();
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => {
+            isSaving.value = true;
             saveMessage.value = '';
             saveStatus.value = null;
-        }, 3000);
 
-    } catch (error) {
-        console.error('Error saving activities:', error);
-        
-        // Enhanced error logging
-        if (axios.isAxiosError(error) && error.response) {
-            console.error('Response status:', error.response.status);
-            console.error('Response data:', error.response.data);
-            console.error('Response headers:', error.response.headers);
-        }
-        
-        let errorMessage = 'Failed to save activities. Please try again.';
-        if (axios.isAxiosError(error)) {
-            if (error.response?.status === 401) {
-                errorMessage = 'Your session has expired. Please log in again.';
-            } else if (error.response?.status === 400) {
-                // More specific 400 error handling
-                const responseData = error.response.data;
-                if (typeof responseData === 'string') {
-                    errorMessage = `Bad request: ${responseData}`;
-                } else if (responseData?.message) {
-                    errorMessage = `Bad request: ${responseData.message}`;
-                } else if (responseData?.errors) {
-                    errorMessage = `Validation errors: ${JSON.stringify(responseData.errors)}`;
-                } else {
-                    errorMessage = 'Bad request: Please check your input data.';
+            try {
+                // Transform activities to exercise payload format
+                const exercises: ExercisePayload[] = activities.value.map(activity => ({
+                    name: activity.exercise,
+                    reps: activity.reps,
+                    weight: activity.weight,
+                    execution: activity.execution,
+                    deathStop: activity.deathStop
+                }));
+
+                // Create single workout payload
+                const workoutPayload: WorkoutPayload = {
+                    name: workoutName.value,
+                    duration: elapsedTime.value.toString(),
+                    description: createWorkoutDescription(),
+                    exercises: exercises
+                };
+
+                // Log the payload for debugging
+                console.log('Sending workout payload:', JSON.stringify(workoutPayload, null, 2));
+
+                // Send single request with all workout data
+                const response = await apiClient.post('/activities', workoutPayload);
+                
+                saveStatus.value = 'success';
+                saveMessage.value = `Successfully saved workout "${workoutName.value}" with ${activities.value.length} exercises!`;
+                
+                // Clear current workout
+                activities.value = [];
+                elapsedTime.value = 0;
+                startTime.value = Date.now();
+                workoutName.value = 'Workout Session';
+                
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    saveMessage.value = '';
+                    saveStatus.value = null;
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error saving workout:', error);
+                
+                // Enhanced error logging
+                if (axios.isAxiosError(error) && error.response) {
+                    console.error('Response status:', error.response.status);
+                    console.error('Response data:', error.response.data);
+                    console.error('Response headers:', error.response.headers);
                 }
-            } else if (error.response?.status >= 500) {
-                errorMessage = 'Server error. Please try again later.';
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
+                
+                let errorMessage = 'Failed to save workout. Please try again.';
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.status === 401) {
+                        errorMessage = 'Your session has expired. Please log in again.';
+                    } else if (error.response?.status === 400) {
+                        // More specific 400 error handling
+                        const responseData = error.response.data;
+                        if (typeof responseData === 'string') {
+                            errorMessage = `Bad request: ${responseData}`;
+                        } else if (responseData?.message) {
+                            errorMessage = `Bad request: ${responseData.message}`;
+                        } else if (responseData?.errors) {
+                            errorMessage = `Validation errors: ${JSON.stringify(responseData.errors)}`;
+                        } else {
+                            errorMessage = 'Bad request: Please check your input data.';
+                        }
+                    } else if (error.response?.status >= 500) {
+                        errorMessage = 'Server error. Please try again later.';
+                    } else if (error.response?.data?.message) {
+                        errorMessage = error.response.data.message;
+                    }
+                } else if (error instanceof Error) {
+                    errorMessage = error.message;
+                }
+                
+                saveStatus.value = 'error';
+                saveMessage.value = errorMessage;
+                
+                // Clear error message after 5 seconds
+                setTimeout(() => {
+                    saveMessage.value = '';
+                    saveStatus.value = null;
+                }, 5000);
+            } finally {
+                isSaving.value = false;
             }
-        } else if (error instanceof Error) {
-            errorMessage = error.message;
         }
-        
-        saveStatus.value = 'error';
-        saveMessage.value = errorMessage;
-        
-        // Clear error message after 5 seconds
-        setTimeout(() => {
-            saveMessage.value = '';
-            saveStatus.value = null;
-        }, 5000);
-    } finally {
-        isSaving.value = false;
-    }
-}
-
-    const currentUser1 = JSON.parse(localStorage.getItem("currentUser"));
-    console.log("Username:", currentUser1.username);
-
-
 
         return {
             workoutName,
@@ -451,8 +420,7 @@ export default defineComponent({
             saveWorkoutSession,
             isSaving,
             saveMessage,
-            saveStatus,
-            savedActivities
+            saveStatus
         };
     }
 });
