@@ -1,6 +1,7 @@
 package com.github.fit_app.controller;
 
 import com.github.fit_app.dto.ActivityRequest;
+import com.github.fit_app.dto.ActivityResponse;
 import com.github.fit_app.entity.Activity;
 import com.github.fit_app.mapper.ActivityMapper;
 import com.github.fit_app.service.ActivityService;
@@ -24,8 +25,8 @@ public class ActivityController {
     }
 
     @GetMapping
-    public List<Activity> getActivities() {
-        return activityService.findAll();
+    public List<ActivityResponse> getActivities() {
+        return activityService.findAll().stream().map(activityMapper::activityToActivityResponse).toList();
     }
 
     @PostMapping

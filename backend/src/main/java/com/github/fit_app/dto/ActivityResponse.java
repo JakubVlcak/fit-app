@@ -1,15 +1,23 @@
 package com.github.fit_app.dto;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
-public class ActivityRequest {
+public class ActivityResponse {
+    private Long id;
     private String name;
-
+    private ZonedDateTime date;
     private Long duration;
-
     private String description;
-
     private List<ExerciseDto> exercises;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
@@ -17,6 +25,14 @@ public class ActivityRequest {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public ZonedDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(ZonedDateTime date) {
+        this.date = date;
     }
 
     public Long getDuration() {
@@ -41,15 +57,5 @@ public class ActivityRequest {
 
     public void setExercises(List<ExerciseDto> exercises) {
         this.exercises = exercises;
-    }
-
-    @Override
-    public String toString() {
-        return "ActivityRequest{" +
-                "name='" + name + '\'' +
-                ", duration=" + duration +
-                ", description='" + description + '\'' +
-                ", exercises=" + exercises +
-                '}';
     }
 }
