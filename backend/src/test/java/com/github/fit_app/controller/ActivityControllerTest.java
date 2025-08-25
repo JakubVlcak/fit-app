@@ -3,7 +3,7 @@ package com.github.fit_app.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fit_app.configuration.TestcontainersConfiguration;
 import com.github.fit_app.dto.ActivityRequest;
-import com.github.fit_app.entity.Exercise;
+import com.github.fit_app.dto.ExerciseDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -18,7 +18,6 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
@@ -32,7 +31,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @AutoConfigureMockMvc
 @Testcontainers
 @Import(TestcontainersConfiguration.class)
-@Transactional
+@Sql(scripts = {"/test-data/users.sql", "/test-data/activities.sql", "/test-data/exercises.sql"},
+        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class ActivityControllerTest {
 
     @Autowired
@@ -41,7 +41,6 @@ class ActivityControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @Sql("/test-data/users.sql")
     @WithMockUser(username = "testuser")
     void testCreateActivity_success() throws Exception {
         ActivityRequest activityRequest = createActivityRequest();
@@ -52,12 +51,20 @@ class ActivityControllerTest {
                 .andExpect(MockMvcResultMatchers.status().is2xxSuccessful());
     }
 
+    @Test
+    @WithMockUser(username = "testuser")
+    void testGetActivities_success() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/activities").with(authentication(customAuth()))
+                )
+                .andExpect(MockMvcResultMatchers.status().is2xxSuccessful());
+    }
+
     private ActivityRequest createActivityRequest() {
         ActivityRequest activityRequest = new ActivityRequest();
         activityRequest.setDuration(100L);
         activityRequest.setName("test");
         activityRequest.setDescription("description");
-        Exercise exercise = new Exercise();
+        ExerciseDto exercise = new ExerciseDto();
         exercise.setName("exercise1");
         exercise.setDeathStop(false);
         exercise.setReps(50L);
