@@ -67,19 +67,33 @@
             </button>
         </div>
 
+        <!-- Exercises List with Fixed Height and Scrolling -->
         <div class="mt-8 w-full max-w-md">
-            <h2 class="text-xl font-bold mb-2">Exercises</h2>
-            <ul class="space-y-2">
-                <li v-for="(a, i) in activities" :key="i"
-                    class="bg-gray-100 p-3 rounded flex justify-between items-center">
-                    <div>
-                        {{ a.exercise }} - {{ a.reps }} reps - {{ a.weight }}kg ({{ a.execution }}) - Death Stop: {{ a.deathStop ? 'Yes' : 'No' }}
-                    </div>
-                    <button @click="removeActivity(i)" class="px-2 py-1 bg-red-500 hover:bg-red-600 rounded text-white">
-                        ✕
-                    </button>
-                </li>
-            </ul>
+            <h2 class="text-xl font-bold mb-2">Exercises ({{ activities.length }})</h2>
+            <div 
+                ref="exercisesList"
+                class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2"
+                :class="{ 'border-dashed border-gray-300': activities.length === 0 }"
+            >
+                <div v-if="activities.length === 0" class="text-center text-gray-500 py-8">
+                    No exercises added yet
+                </div>
+                <ul v-else class="space-y-2">
+                    <li v-for="(a, i) in activities" :key="i"
+                        class="bg-white p-3 rounded border shadow-sm flex justify-between items-center">
+                        <div class="flex-1 pr-2">
+                            <div class="font-medium">{{ a.exercise }}</div>
+                            <div class="text-sm text-gray-600">
+                                {{ a.reps }} reps • {{ a.weight }}kg • {{ a.execution }}
+                                <span v-if="a.deathStop" class="text-red-600 font-medium">• Death Stop</span>
+                            </div>
+                        </div>
+                        <button @click="removeActivity(i)" class="px-2 py-1 bg-red-500 hover:bg-red-600 rounded text-white flex-shrink-0">
+                            ✕
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         <!-- Save/Send Workout Section -->
@@ -111,7 +125,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, onUnmounted, computed } from 'vue';
+import { defineComponent, ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import vSelect from 'vue-select';
 import 'vue-select/dist/vue-select.css';
 import axios, { AxiosInstance } from 'axios';
@@ -163,6 +177,9 @@ export default defineComponent({
         const activities = ref<Activity[]>([]);
         const deathStop = ref(false);
         const searchQuery = ref('');
+
+        // Add ref for the exercises list container
+        const exercisesList = ref<HTMLElement>();
 
         // Auth and user state
         const currentUser = ref<User | null>(null);
@@ -268,7 +285,15 @@ export default defineComponent({
             clearInterval(intervalId);
         });
 
-        function addActivity() {
+        // Function to scroll to bottom of exercises list
+        const scrollToBottomOfExercises = async () => {
+            await nextTick();
+            if (exercisesList.value) {
+                exercisesList.value.scrollTop = exercisesList.value.scrollHeight;
+            }
+        };
+
+        async function addActivity() {
             if (!exercise.value) return;
 
             activities.value.push({
@@ -278,6 +303,16 @@ export default defineComponent({
                 execution: execution.value,
                 deathStop: deathStop.value
             });
+
+            // Auto-scroll to show the newly added exercise
+            await scrollToBottomOfExercises();
+            
+            // Reset form (optional - uncomment if you want to clear the form after adding)
+            // exercise.value = '';
+            // reps.value = 1;
+            // weight.value = 0;
+            // execution.value = 'bilateral';
+            // deathStop.value = false;
         }
 
         function removeActivity(index: number) {
@@ -414,6 +449,7 @@ export default defineComponent({
             addActivity,
             removeActivity,
             onSearch,
+            exercisesList, // Add the ref to the return
             // Auth
             currentUser,
             // Backend integration
